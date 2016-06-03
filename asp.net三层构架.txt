@@ -1,0 +1,297 @@
+于三层架构来说，主要是使用设计模式的思想，对于项目的各个模块实现"高内聚，低耦合"的思想。这里就不做详细的介绍了，如果大家有兴趣，可以阅读软件工程和设计模式相关文章。
+
+对于三层架构来说，就是使用类，把我们在做项目的过程中，可能需要反复操作数据库，反复的使用某个方法等等，可能就是操作的参数不同。如果我们如果在每次使用的时候，都去编写相应的代码，无疑会增加程序员的负担。所以，为了增加方法的重用，就把这些能够重用的方法抽象成类，以供程序员在其它地方可以调用。
+
+当然了，这也是面向对象的一部分。其中的三层所指的就是：①视图层（UI）②数据库访问层（DAL）③业务逻辑层（BLL）。当然了，还有所谓的第四层-实体层（model），这一层主要是在这三个层之间进行流动传递。但是为什么不叫四层架构。。。原因我也不知道，可能是因为实体层是外在的可以根据需要会随时变化的（如：项目后续模块的添加等）。而其它三个层，如果搭建完后，可以作为框架来使用的。。。
+
+1)首先还是先来介绍一下实体层吧，就是我们通常所说的model
+
+实体就是我们在开发项目过程中所要涉及的一些对象。把这些所要涉及的对象（如：新闻名称，新闻上传时间，供稿人，上传文件的名称等），都抽象成一个类。使用封装字段方法，我们可以在视图层通（主要是视图层）过实例化对象的方法，来给我们的对象的属性赋值。
+
+简单的看一段代码吧，可能会能够更加的清楚，明白
+
+复制代码
+ 1 public class NewsModel
+ 2 {
+ 3     //新闻编号
+ 4     private int nNewsId;
+ 5 
+ 6     public int NNewsId
+ 7     {
+ 8         get { return nNewsId; }
+ 9         set { nNewsId = value; }
+10     }
+11 
+12     //新闻名称
+13     private string strNewsName;
+14 
+15     public string StrNewsName
+16     {
+17         get { return strNewsName; }
+18         set { strNewsName = value; }
+19     }
+20 
+21 }
+复制代码
+这里的NewsModel就是一个关于新闻的实体类，其中声明了两个private的属性字段（一定要是private，防止非法赋值），使用public的构造函数，可以在外部给字段赋值。
+
+下面的就是在视图层来实例化对象，根据需要来给字段赋值，看下面的一段代码：
+
+NewsModel newModel = new NewsModel();
+        newModel.StrNewsName = this.TextBox1.Text;
+        
+当然了，这仅仅是一段代码，其中并没有给字段nNewsId赋值，因为我把它作为数据库的id地段，已经设置成自动增长。这样，就完成了视图层对实体层的调用。
+
+ 
+
+2）数据库访问层
+
+数据库库访问层，顾名思义，就是主要来完成对数据库的访问，等一系类的对数据库操作的类。为什么要单独的把对数据库的操作抽象成一个单独的类，我个人理解是因为在整个项目的开发过程中，不仅仅需要一次访问数据库，而是需要多次，如果每次都编写数据库访问代码的话，会增加程序员的个人工作量，而且对于代码的易用性和简洁性来说肯定是非常糟糕的。当然来可能还有其它的一些优点，我暂时还没有发现。
+
+既然是对数据库的操作类，而且对数据库的操作，无非就是四种：增删改查。所以一个能提供增删改查的通用类是必不可少的。这就是我们经常所说的，通用数据库访问类（很多的程序员都喜欢把这个类命名为SqlHelper，既然是名字，都是可以随意起的，只要不违反C#语法命名规范，当然这样命名也是有好处，就是可以使其他程序员根据类的名称，大概判断出这个类是要干什么的）。
+
+当然了，我这次做自己项目的时候，所写的数据库访问类就没有我上次看周金桥老师的书，然后模仿写的数据库访问类那么的复杂了（《【ASP.NET开发】ASP.NET对SQLServer的通用数据库访问类》）。当然了，我这里的数据库访问类，主要还是为了简介，和易用，只要满足我自己当前项目的需要就可以了，不是每做一个项目，都要写一个功能全面的数据库访问类。
+
+代码如下，请大家参考，更喜欢哪个访问类，自己可以根据自己口味，或者需要，直接用也可以：
+
+复制代码
+/// <summary>
+///创建一个SqlHelper的数据库访问通用类，完成对数据库的所有操作
+/// </summary>
+public class SqlHelper
+{
+    //定义数据库的连接字符串
+    private static readonly string connectionString = ConfigurationManager.ConnectionStrings["strConnectionString"].ConnectionString;
+
+    /// <summary>
+    /// 创建方法，完成对数据库的非查询的操作
+    /// </summary>
+    /// <param name="sql">sql语句</param>
+    /// <param name="parameters">传入的参数</param>
+    /// <returns></returns>
+    public static int ExecuteNonQuery(string sql, params SqlParameter[] parameters)
+    {
+        using (SqlConnection con = new SqlConnection(connectionString))
+        {
+            con.Open();
+            using (SqlCommand cmd = con.CreateCommand())
+            {
+                cmd.CommandText = sql;
+                cmd.Parameters.AddRange(parameters);
+                string str = sql;
+                return cmd.ExecuteNonQuery();
+                
+            }
+        }
+    }
+
+    /// <summary>
+    /// 完成查询的结果值
+    /// </summary>
+    /// <param name="sql">sql语句</param>
+    /// <param name="parameters">传入的参数数组</param>
+    /// <returns></returns>
+    public static int ExecuteScalar(string sql, params SqlParameter[] parameters)
+    {
+        using (SqlConnection con = new SqlConnection(connectionString))
+        {
+            con.Open();
+            using (SqlCommand cmd = con.CreateCommand())
+            {
+                cmd.CommandText = sql;
+                cmd.Parameters.AddRange(parameters);
+                return Convert.ToInt32( cmd.ExecuteScalar());
+            }
+        }
+    }
+
+    /// <summary>
+    /// 主要执行查询操作
+    /// </summary>
+    /// <param name="sql">执行的sql语句</param>
+    /// <param name="parameters">参数数组</param>
+    /// <returns></returns>
+    public static DataTable ExecuteDataTable(string sql, params SqlParameter[] parameters)
+    {
+        using (SqlConnection con = new SqlConnection(connectionString))
+        {
+            con.Open();
+            using (SqlCommand cmd = con.CreateCommand())
+            {
+                cmd.CommandText = sql;
+                cmd.Parameters.AddRange(parameters);
+                
+                SqlDataAdapter adapter = new SqlDataAdapter(cmd);
+                DataTable dt = new DataTable();
+                adapter.Fill(dt);
+                return dt;
+            }
+        }
+    }
+}
+复制代码
+这样的类创建好以后，其他的需要访问数据库的类，就可以根据自己的需要，完成相应的增删改查的操作了。还是用一段代码来演示吧：
+
+复制代码
+/// <summary>
+///NewsDALL 的摘要说明
+/// </summary>
+public class NewsDALL
+{
+    //向数据库中插入新闻
+    public int AddNews(NewsModel model)
+    {
+        string sql = "insert into News (name,author,time,content,sort,isdelete) values(@name,@author,@time,@content,@sort,@isdelete)";
+        int nResult = SqlHelper.ExecuteNonQuery(sql, new SqlParameter("@name", model.StrNewsName), new SqlParameter("@author",model.StrNewsAuthor),new SqlParameter("@time", model.StrAddTime), new SqlParameter("@content", model.StrNewsContent), new SqlParameter("@sort", model.Sort), new SqlParameter("@isdelete", model.IsDelete1));
+        return nResult;
+    }
+
+    //执行数据库的删除操作
+    public int DeleteNew(int id)
+    {
+        string sql = "delete from News where id=@id";
+        int nResult = SqlHelper.ExecuteNonQuery(sql, new SqlParameter("@id", id));
+        return nResult;
+    }
+
+    //执行数据库的更新操作
+    public int UpdateNew(NewsModel model, int nID)
+    {
+        string sql = "update News set name=@name,time=@time,content=@content where id=" + nID;
+        int nResult = SqlHelper.ExecuteNonQuery(sql, new SqlParameter("@name", model.StrNewsName), new SqlParameter("@time", model.StrAddTime), new SqlParameter("@content", model.StrNewsContent));
+
+        return nResult;
+    }
+
+    //执行数据库的查询操作
+    public NewsModel GetNewsModel(int id)//声明一次从数据库中读取新闻的条数
+    {
+        string sql = "select * from News where id=@id";
+        DataTable dt = SqlHelper.ExecuteDataTable(sql, new SqlParameter("@id", id));
+
+        if (dt.Rows.Count <= 0)
+        {
+            return null;
+        }
+        else if (dt.Rows.Count == 1)
+        {
+            NewsModel newModel = new NewsModel();
+            DataRow dr = dt.Rows[0];
+            newModel.StrNewsName = dr["name"].ToString();
+            newModel.StrNewsAuthor = dr["author"].ToString();
+            newModel.StrAddTime = dr["time"].ToString();
+            newModel.StrNewsContent = dr["content"].ToString();
+            newModel.Sort = (int)dr["sort"];
+
+            return newModel;
+        }
+        else
+        {
+            throw new Exception("出现异常！");
+        }
+    }
+}
+复制代码
+这里的这个NewsDALL类，主要是来完成有关新闻需要对数据库的各种操作，当然了，这只是这个类的一部分，主要是来演示NewsDALL类怎样调用SqlHelper类中的方法，来完成对数据库的操作的。
+
+3）接下来就是最后一层，业务逻辑层了。
+
+业务逻辑层的话主要来处理视图层和数据库访问层之间的关系的。当然了，也可以直接在视图层调用数据库访问层，但是对于关系来说可能会增加复杂性，所以前辈们就专门的抽象出来一个业务逻辑层，把所有的业务逻辑关系都在这一层处理清楚之后再，访问数据库访问层，进行对数据的操作。（当然这是我自己的理解，如果有什么不对的话，请大家指正）
+
+在我这次的项目中，貌似我的这一层完全是多余的，因为不需要什么太多的业务逻辑的处理，可以完全在视图层直接访问数据库访问层的。
+
+还是使用代码说话吧，当然这个仍然是NewsBLL类代码的一部分：
+
+复制代码
+/// <summary>
+///业务逻辑层主要处理视图层和数据库访问直接的关系
+/// </summary>
+public class NewsBLL
+{
+    //完成对数据库的添加
+    public static int AddNew(NewsModel model)
+    {
+        NewsDALL newDALL = new NewsDALL();
+        return newDALL.AddNews(model);
+    }
+
+    //完成对数据的删除
+    public static int DeleteNew(int i)
+    {
+        NewsDALL newDALL = new NewsDALL();
+        return newDALL.DeleteNew(i);
+    }
+
+  
+
+    //返回一个新闻分类的对象
+    public static NewsModel GetModel(int intSort)
+    {
+        NewsModel model = new NewsModel();
+        if (intSort == 1)
+        {
+            model.StrNewSort1 = "学院新闻";
+            model.StrNewSort2 = "";
+            model.StrNewSort3 = "";
+        }
+        else if (intSort == 2)
+        {
+            model.StrNewSort1 = "公告通知";
+            model.StrNewSort2 = "";
+            model.StrNewSort3 = "";
+        }
+        ..........
+
+        return model;
+    }
+}
+复制代码
+接下来就是在视图层来通过访问，业务逻辑层来和实体层，来玩成所需要的数据操作了。
+
+还是使用代码来描述吧，这个代码主要来完成对数据进行添加：
+
+复制代码
+public void InsertData()
+    {
+        NewsModel newModel = new NewsModel();
+        newModel.StrNewsName = this.TextBox1.Text;
+        newModel.StrNewsAuthor = this.TxtBoxAuthor.Text;
+        newModel.StrAddTime = this.TxtDate.Text;
+        newModel.StrNewsContent = Server.HtmlDecode(FCKeditor1.Value);
+        newModel.Sort =Convert.ToInt32( this.DropDownList2.SelectedValue.ToString());
+
+        //NewsBLL newBLL = new NewsBLL();
+        int nResult= NewsBLL.AddNew(newModel);
+        if (nResult != 0)
+        {
+            Response.Write("<script>alert('添加成功！')</script>");
+        }
+        else
+        {
+            Response.Write("<script>alert('添加失败！')</script>");
+        }
+    }
+复制代码
+我以前自己做的图，被大家指出了很多的错误。所以，我就引用了网络上的一个图片来解释（如果侵害了您的版权，请您联系我）
+
+
+
+据我自己的理解，三层架构可以算是一个团队项目开发的基本框架，在这个框架的基础上可以满足一些设计模式的需要。当然可以满足模块开发的需要。
+
+总结：
+
+对于我这次的开发项目来说，收获还是很多的，以前仅仅是知道有三层架构这个东西，也看书，照着别人的代码写过，但是却不能体会到这其中的真正意义。
+
+优点：①使代码的重用更加的高了，不需要像以前做项目，每次在一个页面反复的编写操作数据库的代码，而使用三层架构的话，只需要把注意力放在业务逻辑层     的业务逻辑的处理和数据库访问层的sql语句的编写。
+
+ ②代码的整洁性，和易用性更加的高了。因为不同的操作都分别放在了不同的层，所以代码逻辑更加清晰，如果做好注释的话，别人能够更加清楚的理解    编写者的意图。
+
+ ③可扩展型更加的高了，根据需要在不同的层编写代码，然后调用就可以了。
+
+ ④非常利于团队开发。
+
+当然了，三层架构的有点不仅仅有这些，不然也不会成为现在企业开发的基本框架，这只不过是我在开发中明显的发现的优点，拿出来跟大家分享一下。
+
+缺点：①就是性能上肯定比以前直接在相应的页面编写数据库操作代码上有点降低。但是这个完全是可以接受的，况且，对于我现在的水平就是代码质量上可定还     有待提高，有更大的优化空间。
+
+  ②就是在我的项目中，我觉得最大的浪费就是可以在视图层直接访问数据库访问层，因为要处理的业务逻辑实在是不多，所以还是有点代码冗余吧。所以，     以后还是要跟据自己项目的需要，来灵活的使用，不一定要按照规定必须这样做。

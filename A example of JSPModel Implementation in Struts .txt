@@ -1,0 +1,139 @@
+struts2支持多模块多配置文件开发。下面是一个仅包含两个模块的示范程序，包括财务、仓库模块。它们都有一个“caiwu“的Action，在各自的命名空间下；还有一个从财务转向到仓库的Action。
+
+1. 创建模块的控制层
+财务模块：
+
+package com.clzhang.ssh.demo3;
+
+// 财务类
+public class CaiwuAction {
+
+    public String execute() {
+        System.out.println("执行了财务统计模块");
+
+        return "toCaiwu";
+    }
+}
+仓库模块：
+
+package com.clzhang.ssh.demo3;
+
+// 仓库类
+public class CangkuAction {
+    //属性id的作用是在重定向的过程中传递参数
+    private int id;
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String execute() {
+        System.out.println("执行了仓库模块，传进来的id=" + id);
+
+        return "toCangku";
+    }
+}
+从财务模块转向到仓库模块（带参数）：
+
+
+package com.clzhang.ssh.demo3;
+
+// 不同模块之间的重定向操作
+public class FromCaiwu2CangkuAction {
+    //属性id的作用是在重定向的过程中传递参数
+    private int id;
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String execute() {
+        id = 999;
+        System.out.println("从财务模块中的财务转到了仓库中的财务");
+
+        return "gotoCangku";
+    }
+}
+
+2. 创建配置文件
+财务模块配置文件caiwu.xml（其中包含一个可以从财务模块转向到仓库模块的配置）：
+
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+    "-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+    "http://struts.apache.org/dtds/struts-2.3.dtd">
+
+<struts>
+    <package name="caiwu" extends="struts-default" namespace="/caiwu">
+        <action name="caiwu" class="com.clzhang.ssh.demo3.CaiwuAction">
+            <result name="toCaiwu">/ssh/demo3/caiwu.jsp</result>
+        </action>
+
+        <action name="fromcaiwu2cangku"
+            class="com.clzhang.ssh.demo3.FromCaiwu2CangkuAction">
+            <result name="gotoCangku"
+                type="redirectAction">
+                <param name="namespace">/cangku</param>
+                <param name="actionName">caiwu?id=${id}</param>
+            </result>
+        </action>
+    </package>
+</struts>
+
+仓库模块配置文件cangku.xml：
+
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+    "-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+    "http://struts.apache.org/dtds/struts-2.3.dtd">
+<struts>
+    <package name="cangku" extends="struts-default" namespace="/cangku">
+        <action name="caiwu" class="com.clzhang.ssh.demo3.CangkuAction">
+            <result name="toCangku">/ssh/demo3/cangku.jsp</result>
+        </action>
+    </package>
+</struts>
+复制代码
+struts.xml配置（使用include标记导入多个配置文件）：
+
+
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE struts PUBLIC
+    "-//Apache Software Foundation//DTD Struts Configuration 2.3//EN"
+    "http://struts.apache.org/dtds/struts-2.3.dtd">
+    
+<struts>
+    <include file="caiwu.xml"></include>
+    <include file="cangku.xml"></include>
+
+    <constant name="struts.action.extension" value="action"></constant>
+</struts>
+
+3. 创建各模块使用的JSP文件
+caiwu.jsp
+<%@ page language="java" import="java.util.*" pageEncoding="utf-8"%>
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+    <body>
+        显示财务模块
+    </body>
+</html>
+cangku.jsp
+
+<%@ page language="java" import="java.util.*" pageEncoding="utf-8"%>
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+    <body>
+        显示仓库模块
+    </body>
+</html>
